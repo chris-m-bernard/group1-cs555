@@ -1,4 +1,5 @@
 import "./App.css";
+import { Provider } from "./components/ui/provider";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
@@ -6,7 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 function App() {
   return (
-    <div>
+    <Provider>
       <BrowserRouter>
         <Routes>
           <Route index element={<Home />}></Route>
@@ -15,7 +16,7 @@ function App() {
           <Route path="/SignUp" element={<SignUp />} />
         </Routes>
       </BrowserRouter>
-    </div>
+    </Provider>
   );
 }
 
