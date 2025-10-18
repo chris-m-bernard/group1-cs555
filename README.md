@@ -12,6 +12,8 @@ Currently a React application with Firebase authentication, built with TypeScrip
 - Type-safe with TypeScript
 - React Router for navigation
 
+This app showcases a responsive Chakra UI layout with protected routes powered by Firebase Authentication. It’s a clean baseline for teams to iterate quickly on real-world features.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
