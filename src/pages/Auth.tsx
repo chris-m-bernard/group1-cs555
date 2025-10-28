@@ -109,7 +109,7 @@ export default function Auth(): ReactElement {
               style={{ minWidth: 'auto', padding: '8px' }}
             >
               <img 
-                src={showPassword ? hideIcon : viewIcon} 
+              src={showPassword ? viewIcon : hideIcon } 
                 alt={showPassword ? "Hide password" : "Show password"}
                 width="16" 
                 height="16"
