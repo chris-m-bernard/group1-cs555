@@ -1,3 +1,19 @@
+# Group 1 CS-555 Project
+
+Currently a React application with Firebase authentication, built with TypeScript and Vite.
+
+## Features
+
+- Firebase Authentication (Sign Up, Sign In, Sign Out)
+- Modern UI with Chakra UI components
+- Dark/Light mode support
+- Responsive design
+- Fast development with Vite
+- Type-safe with TypeScript
+- React Router for navigation
+
+This app showcases a responsive Chakra UI layout with protected routes powered by Firebase Authentication. It’s a clean baseline for teams to iterate quickly on real-world features.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -66,7 +82,7 @@ export default defineConfig([
         project: ['./tsconfig.node.json', './tsconfig.app.json'],
         tsconfigRootDir: import.meta.dirname,
       },
-      // other options...
+      // other options..
     },
   },
 ])

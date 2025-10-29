@@ -2,8 +2,7 @@ function Home() {
   return (
     <>
       <div>Home Page</div>
-      <a href="/SignUp">Sign Up</a>
-      <a href="/LogIn">Login</a>
+      <a href="/Auth">Sign Up / Login</a>
     </>
   );
 }

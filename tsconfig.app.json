@@ -5,7 +5,11 @@
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "firebase/*": ["./node_modules/firebase/*"]
+    },
+    "types": ["vite/client", "react", "react-dom"],
     "skipLibCheck": true,
 
     /* Bundler mode */
