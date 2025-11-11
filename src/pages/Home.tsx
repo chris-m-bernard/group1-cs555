@@ -1,8 +1,11 @@
+import {Link} from "react-router-dom"
+import {routes} from "../routes"
+
 function Home() {
   return (
     <>
       <div>Home Page</div>
-      <a href="/Auth">Sign Up / Login</a>
+      <Link to={routes.auth}>Sign Up / Login</Link>
     </>
   );
 }

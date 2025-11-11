@@ -7,7 +7,6 @@ import {
   VStack,
   HStack,
   Text,
-  Link as ChakraLink,
   Box,
 } from "@chakra-ui/react";
 import { auth } from "../lib/firebase";
@@ -24,6 +23,8 @@ import {
   browserSessionPersistence,
   type User,
 } from "firebase/auth";
+import {routes} from "../routes.ts"
+import {Link} from "react-router-dom"
 
 export default function Auth(): ReactElement {
   const [email, setEmail] = useState("");
@@ -169,7 +170,7 @@ export default function Auth(): ReactElement {
       )}
 
       <Box mt={8} display="flex" gap="4">
-        <ChakraLink href="/Home">Home</ChakraLink>
+        <Link to={routes.home}>Home</Link>
       </Box>
     </>
   );
