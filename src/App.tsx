@@ -1,23 +1,25 @@
 import "./App.css";
-import { Provider } from "./components/ui/provider";
+import { ChakraProvider, ColorModeScript } from "@chakra-ui/react";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./lib/auth-context";
-import { routes } from "./routes"
+import { routes } from "./routes";
 
 function App() {
   return (
-    <Provider>
+    <ChakraProvider>
+      <ColorModeScript />
       <AuthProvider>
         <BrowserRouter>
           <Routes>
-            <Route index element={<Home />}></Route>
             <Route path={routes.auth} element={<Auth />} />
+            <Route path={routes.dash} element={<Dashboard />} />
           </Routes>
         </BrowserRouter>
       </AuthProvider>
-    </Provider>
+    </ChakraProvider>
   );
 }
 

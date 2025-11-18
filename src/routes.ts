@@ -1,6 +1,6 @@
 // src/routes.ts
 export const routes = {
-    home: "/",
-    auth: "/auth"
+    auth: "/",
+    dash: "/dashboard"
 } as const;
 

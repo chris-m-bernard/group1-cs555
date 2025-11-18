@@ -5,6 +5,7 @@ function Home() {
   return (
     <>
       <div>Home Page</div>
+      <p>Hellowdgsdfg</p>
       <Link to={routes.auth}>Sign Up / Login</Link>
     </>
   );

@@ -11,6 +11,12 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
+async function test(apiKey:string){
+  console.log("API KEY HERE:::: ", apiKey)
+}
+
+await test(firebaseConfig.apiKey);
+
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
