@@ -1,341 +1,242 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '../test/setup'
-import userEvent from '@testing-library/user-event'
-import Auth from '../pages/Auth'
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import userEvent from "@testing-library/user-event";
+import {
+  browserLocalPersistence,
+  browserSessionPersistence,
+  createUserWithEmailAndPassword,
+  onAuthStateChanged,
   sendPasswordResetEmail,
   setPersistence,
-  onAuthStateChanged 
-} from 'firebase/auth'
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { render, screen, waitFor } from "../test/setup";
+import Auth from "./Auth";
 
-// Mock the Firebase auth functions
-const mockCreateUser = vi.mocked(createUserWithEmailAndPassword)
-const mockSignIn = vi.mocked(signInWithEmailAndPassword)
-const mockSignOut = vi.mocked(signOut)
-const mockPasswordReset = vi.mocked(sendPasswordResetEmail)
-const mockSetPersistence = vi.mocked(setPersistence)
-const mockOnAuthStateChanged = vi.mocked(onAuthStateChanged)
+const mockCreateUser = vi.mocked(createUserWithEmailAndPassword);
+const mockSignIn = vi.mocked(signInWithEmailAndPassword);
+const mockPasswordReset = vi.mocked(sendPasswordResetEmail);
+const mockSetPersistence = vi.mocked(setPersistence);
+const mockOnAuthStateChanged = vi.mocked(onAuthStateChanged);
 
-describe('Auth Component', () => {
-  const user = userEvent.setup()
+const getEmailInput = () =>
+  screen.getByPlaceholderText("you@example.com") as HTMLInputElement;
+const getPasswordInput = () =>
+  screen.getByPlaceholderText(/•+/) as HTMLInputElement;
+
+describe("Auth Component", () => {
+  let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    // Mock successful auth state change
-    mockOnAuthStateChanged.mockImplementation((auth, callback) => {
-      callback(null) // No user initially
-      return () => {} // Return unsubscribe function
-    })
-  })
+    user = userEvent.setup();
+    vi.clearAllMocks();
+    mockSetPersistence.mockResolvedValue(undefined as never);
+    mockOnAuthStateChanged.mockImplementation((_auth, callback) => {
+      callback(null);
+      return vi.fn();
+    });
+  });
 
-  describe('Initial Render', () => {
-    it('renders sign in form when no user is authenticated', () => {
-      render(<Auth />)
-      
-      expect(screen.getByText('Sign In or Sign Up')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('email')).toBeInTheDocument()
-      expect(screen.getByPlaceholderText('password')).toBeInTheDocument()
-      expect(screen.getByText('Sign Up')).toBeInTheDocument()
-      expect(screen.getByText('Sign In')).toBeInTheDocument()
-      expect(screen.getByText('Remember me')).toBeInTheDocument()
-    })
+  const typeCredentials = async (
+    email = "test@example.com",
+    password = "password123"
+  ) => {
+    await user.type(getEmailInput(), email);
+    await user.type(getPasswordInput(), password);
+  };
 
-    it('renders authenticated view when user is logged in', () => {
-      const mockUser = { email: 'test@example.com' }
-      mockOnAuthStateChanged.mockImplementation((auth, callback) => {
-        callback(mockUser as any)
-        return () => {}
-      })
+  it("renders the marketing panel and form controls", () => {
+    render(<Auth />);
 
-      render(<Auth />)
-      
-      expect(screen.getByText('AUTHENTICATED')).toBeInTheDocument()
-      expect(screen.getByText('Welcome test@example.com.')).toBeInTheDocument()
-      expect(screen.getByText('Sign Out')).toBeInTheDocument()
-    })
-  })
+    expect(
+      screen.getByRole("heading", { name: /welcome back/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/sign in to access your dashboard/i)
+    ).toBeInTheDocument();
+    expect(getEmailInput()).toBeInTheDocument();
+    expect(getPasswordInput()).toBeInTheDocument();
+    expect(screen.getByLabelText(/remember me/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /sign up/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /sign in/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /forgot password/i })
+    ).toBeInTheDocument();
+  });
 
-  describe('Form Inputs', () => {
-    it('allows typing in email field', async () => {
-      render(<Auth />)
-      
-      const emailInput = screen.getByPlaceholderText('email')
-      await user.type(emailInput, 'test@example.com')
-      
-      expect(emailInput).toHaveValue('test@example.com')
-    })
+  it("allows users to type credentials and toggle password visibility", async () => {
+    render(<Auth />);
 
-    it('allows typing in password field', async () => {
-      render(<Auth />)
-      
-      const passwordInput = screen.getByPlaceholderText('password')
-      await user.type(passwordInput, 'password123')
-      
-      expect(passwordInput).toHaveValue('password123')
-    })
+    await typeCredentials();
+    expect(getEmailInput()).toHaveValue("test@example.com");
+    expect(getPasswordInput()).toHaveValue("password123");
+    expect(getPasswordInput()).toHaveAttribute("type", "password");
 
-    it('toggles password visibility when eye icon is clicked', async () => {
-      render(<Auth />)
-      
-      const passwordInput = screen.getByPlaceholderText('password')
-      const toggleButton = screen.getByAltText('Show password')
-      
-      // Initially password should be hidden
-      expect(passwordInput).toHaveAttribute('type', 'password')
-      
-      // Click to show password
-      await user.click(toggleButton)
-      expect(passwordInput).toHaveAttribute('type', 'text')
-      expect(screen.getByAltText('Hide password')).toBeInTheDocument()
-      
-      // Click to hide password again
-      await user.click(screen.getByAltText('Hide password'))
-      expect(passwordInput).toHaveAttribute('type', 'password')
-      expect(screen.getByAltText('Show password')).toBeInTheDocument()
-    })
+    const toggleIcon = screen.getByAltText("Show password");
+    await user.click(toggleIcon);
+    expect(getPasswordInput()).toHaveAttribute("type", "text");
+    expect(screen.getByAltText("Hide password")).toBeInTheDocument();
 
-    it('toggles remember me checkbox', async () => {
-      render(<Auth />)
-      
-      const rememberMeCheckbox = screen.getByLabelText('Remember me')
-      
-      expect(rememberMeCheckbox).not.toBeChecked()
-      
-      await user.click(rememberMeCheckbox)
-      expect(rememberMeCheckbox).toBeChecked()
-      
-      await user.click(rememberMeCheckbox)
-      expect(rememberMeCheckbox).not.toBeChecked()
-    })
-  })
+    await user.click(screen.getByAltText("Hide password"));
+    expect(getPasswordInput()).toHaveAttribute("type", "password");
+  });
 
-  describe('Sign Up', () => {
-    it('calls createUserWithEmailAndPassword with correct credentials', async () => {
-      mockCreateUser.mockResolvedValue({} as any)
-      
-      render(<Auth />)
-      
-      const emailInput = screen.getByPlaceholderText('email')
-      const passwordInput = screen.getByPlaceholderText('password')
-      const signUpButton = screen.getByText('Sign Up')
-      
-      await user.type(emailInput, 'test@example.com')
-      await user.type(passwordInput, 'password123')
-      await user.click(signUpButton)
-      
-      await waitFor(() => {
-        expect(mockCreateUser).toHaveBeenCalledWith(
-          expect.anything(),
-          'test@example.com',
-          'password123'
-        )
-      })
-    })
+  it("toggles the remember me checkbox", async () => {
+    render(<Auth />);
+    const checkbox = screen.getByLabelText(/remember me/i) as HTMLInputElement;
 
-    it('shows error message when sign up fails', async () => {
-      const errorMessage = 'Email already in use'
-      mockCreateUser.mockRejectedValue(new Error(errorMessage))
-      
-      render(<Auth />)
-      
-      const emailInput = screen.getByPlaceholderText('email')
-      const passwordInput = screen.getByPlaceholderText('password')
-      const signUpButton = screen.getByText('Sign Up')
-      
-      await user.type(emailInput, 'test@example.com')
-      await user.type(passwordInput, 'password123')
-      await user.click(signUpButton)
-      
-      await waitFor(() => {
-        expect(screen.getByText(errorMessage)).toBeInTheDocument()
-      })
-    })
-  })
+    expect(checkbox.checked).toBe(false);
+    await user.click(checkbox);
+    expect(checkbox.checked).toBe(true);
+    await user.click(checkbox);
+    expect(checkbox.checked).toBe(false);
+  });
 
-  describe('Sign In', () => {
-    it('calls signInWithEmailAndPassword with correct credentials', async () => {
-      mockSignIn.mockResolvedValue({} as any)
-      
-      render(<Auth />)
-      
-      const emailInput = screen.getByPlaceholderText('email')
-      const passwordInput = screen.getByPlaceholderText('password')
-      const signInButton = screen.getByText('Sign In')
-      
-      await user.type(emailInput, 'test@example.com')
-      await user.type(passwordInput, 'password123')
-      await user.click(signInButton)
-      
-      await waitFor(() => {
-        expect(mockSignIn).toHaveBeenCalledWith(
-          expect.anything(),
-          'test@example.com',
-          'password123'
-        )
-      })
-    })
+  it("signs users up with their email and password", async () => {
+    mockCreateUser.mockResolvedValue({} as never);
+    render(<Auth />);
 
-    it('sets persistence based on remember me checkbox', async () => {
-      mockSignIn.mockResolvedValue({} as any)
-      mockSetPersistence.mockResolvedValue()
-      
-      render(<Auth />)
-      
-      const emailInput = screen.getByPlaceholderText('email')
-      const passwordInput = screen.getByPlaceholderText('password')
-      const rememberMeCheckbox = screen.getByLabelText('Remember me')
-      const signInButton = screen.getByText('Sign In')
-      
-      await user.type(emailInput, 'test@example.com')
-      await user.type(passwordInput, 'password123')
-      
-      // Test with remember me checked
-      await user.click(rememberMeCheckbox)
-      await user.click(signInButton)
-      
-      await waitFor(() => {
-        expect(mockSetPersistence).toHaveBeenCalledWith(
-          expect.anything(),
-          'local'
-        )
-      })
-      
-      // Test with remember me unchecked
-      await user.click(rememberMeCheckbox)
-      await user.click(signInButton)
-      
-      await waitFor(() => {
-        expect(mockSetPersistence).toHaveBeenCalledWith(
-          expect.anything(),
-          'session'
-        )
-      })
-    })
+    await typeCredentials();
+    await user.click(screen.getByRole("button", { name: /sign up/i }));
 
-    it('shows error message when sign in fails', async () => {
-      const errorMessage = 'Invalid credentials'
-      mockSignIn.mockRejectedValue(new Error(errorMessage))
-      
-      render(<Auth />)
-      
-      const emailInput = screen.getByPlaceholderText('email')
-      const passwordInput = screen.getByPlaceholderText('password')
-      const signInButton = screen.getByText('Sign In')
-      
-      await user.type(emailInput, 'test@example.com')
-      await user.type(passwordInput, 'wrongpassword')
-      await user.click(signInButton)
-      
-      await waitFor(() => {
-        expect(screen.getByText(errorMessage)).toBeInTheDocument()
-      })
-    })
-  })
+    await waitFor(() => {
+      expect(mockCreateUser).toHaveBeenCalledWith(
+        expect.anything(),
+        "test@example.com",
+        "password123"
+      );
+    });
+  });
 
-  describe('Sign Out', () => {
-    it('calls signOut when sign out button is clicked', async () => {
-      const mockUser = { email: 'test@example.com' }
-      mockOnAuthStateChanged.mockImplementation((auth, callback) => {
-        callback(mockUser as any)
-        return () => {}
-      })
-      mockSignOut.mockResolvedValue()
-      
-      render(<Auth />)
-      
-      const signOutButton = screen.getByText('Sign Out')
-      await user.click(signOutButton)
-      
-      await waitFor(() => {
-        expect(mockSignOut).toHaveBeenCalled()
-      })
-    })
-  })
+  it("surfaces sign up errors", async () => {
+    mockCreateUser.mockRejectedValue(new Error("Email already used"));
+    render(<Auth />);
 
-  describe('Forgot Password', () => {
-    it('shows error when email is empty', async () => {
-      render(<Auth />)
-      
-      const forgotPasswordButton = screen.getByText('Forgot Password?')
-      await user.click(forgotPasswordButton)
-      
-      expect(
-        screen.getByText(/Enter your email above, then click .*Forgot password.*\?/)
-      ).toBeInTheDocument()
-    })
+    await typeCredentials();
+    await user.click(screen.getByRole("button", { name: /sign up/i }));
 
-    it('calls sendPasswordResetEmail with correct email', async () => {
-      mockPasswordReset.mockResolvedValue()
-      
-      render(<Auth />)
-      
-      const emailInput = screen.getByPlaceholderText('email')
-      const forgotPasswordButton = screen.getByText('Forgot Password?')
-      
-      await user.type(emailInput, 'test@example.com')
-      await user.click(forgotPasswordButton)
-      
-      await waitFor(() => {
-        expect(mockPasswordReset).toHaveBeenCalledWith(
-          expect.anything(),
-          'test@example.com'
-        )
-        expect(screen.getByText('Password reset email sent. Check your inbox.')).toBeInTheDocument()
-      })
-    })
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Email already used"
+    );
+  });
 
-    it('shows error when password reset fails', async () => {
-      const errorMessage = 'User not found'
-      mockPasswordReset.mockRejectedValue(new Error(errorMessage))
-      
-      render(<Auth />)
-      
-      const emailInput = screen.getByPlaceholderText('email')
-      const forgotPasswordButton = screen.getByText('Forgot Password?')
-      
-      await user.type(emailInput, 'test@example.com')
-      await user.click(forgotPasswordButton)
-      
-      await waitFor(() => {
-        expect(screen.getByText(errorMessage)).toBeInTheDocument()
-      })
-    })
-  })
+  it("signs users in and respects the remember me selection", async () => {
+    mockSignIn.mockResolvedValue({} as never);
+    render(<Auth />);
 
-  describe('Loading States', () => {
-    it('shows loading state during sign up', async () => {
-      mockCreateUser.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-      
-      render(<Auth />)
-      
-      const emailInput = screen.getByPlaceholderText('email')
-      const passwordInput = screen.getByPlaceholderText('password')
-      const signUpButton = screen.getByText('Sign Up')
-      
-      await user.type(emailInput, 'test@example.com')
-      await user.type(passwordInput, 'password123')
-      await user.click(signUpButton)
-      
-      expect(signUpButton).toBeDisabled()
-    })
+    const checkbox = screen.getByLabelText(/remember me/i);
+    const signInButton = screen.getByRole("button", { name: /sign in/i });
 
-    it('shows loading state during sign in', async () => {
-      mockSignIn.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-      
-      render(<Auth />)
-      
-      const emailInput = screen.getByPlaceholderText('email')
-      const passwordInput = screen.getByPlaceholderText('password')
-      const signInButton = screen.getByText('Sign In')
-      
-      await user.type(emailInput, 'test@example.com')
-      await user.type(passwordInput, 'password123')
-      await user.click(signInButton)
-      
-      expect(signInButton).toBeDisabled()
-    })
-  })
-})
+    await typeCredentials();
+
+    await user.click(checkbox);
+    await user.click(signInButton);
+
+    await waitFor(() => {
+      expect(mockSetPersistence).toHaveBeenCalledWith(
+        expect.anything(),
+        browserLocalPersistence
+      );
+    });
+    expect(mockSignIn).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "test@example.com",
+      "password123"
+    );
+
+    mockSetPersistence.mockClear();
+    mockSignIn.mockClear();
+
+    await user.click(checkbox);
+    await user.click(signInButton);
+
+    await waitFor(() => {
+      expect(mockSetPersistence).toHaveBeenCalledWith(
+        expect.anything(),
+        browserSessionPersistence
+      );
+    });
+    expect(mockSignIn).toHaveBeenLastCalledWith(
+      expect.anything(),
+      "test@example.com",
+      "password123"
+    );
+  });
+
+  it("surfaces sign in errors", async () => {
+    mockSignIn.mockRejectedValue(new Error("Invalid credentials"));
+    render(<Auth />);
+
+    await typeCredentials("test@example.com", "wrong");
+    await user.click(screen.getByRole("button", { name: /sign in/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Invalid credentials"
+    );
+  });
+
+  it("requires an email before sending a password reset email", async () => {
+    render(<Auth />);
+
+    await user.click(
+      screen.getByRole("button", { name: /forgot password/i })
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      'Enter your email above, then click "Forgot password?"'
+    );
+  });
+
+  it("sends and reports a password reset email", async () => {
+    mockPasswordReset.mockResolvedValue(undefined as never);
+    render(<Auth />);
+
+    await typeCredentials();
+    await user.click(
+      screen.getByRole("button", { name: /forgot password/i })
+    );
+
+    await waitFor(() => {
+      expect(mockPasswordReset).toHaveBeenCalledWith(
+        expect.anything(),
+        "test@example.com"
+      );
+    });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Password reset email sent. Check your inbox."
+    );
+  });
+
+  it("shows reset errors when Firebase rejects the request", async () => {
+    mockPasswordReset.mockRejectedValue(new Error("User not found"));
+    render(<Auth />);
+
+    await typeCredentials();
+    await user.click(
+      screen.getByRole("button", { name: /forgot password/i })
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "User not found"
+    );
+  });
+
+  it("disables actions while a request is inflight", async () => {
+    mockCreateUser.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(resolve, 50);
+        })
+    );
+    render(<Auth />);
+
+    await typeCredentials();
+    const signUpButton = screen.getByRole("button", { name: /sign up/i });
+    await user.click(signUpButton);
+
+    expect(signUpButton).toBeDisabled();
+  });
+});
