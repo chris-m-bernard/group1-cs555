@@ -28,23 +28,25 @@ import {
 import { routes } from "../routes.ts";
 import { Link } from "react-router-dom";
 import { ensureUserDoc } from "../lib/userData";
+import { useAuth } from "../lib/auth-context";
 
 import { useNavigate } from "react-router-dom";
 
 export default function Auth(): ReactElement {
   const [email, setEmail] = useState("");
   const [pw, setPw] = useState("");
-  const [user, setUser] = useState<User | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { user, initializing } = useAuth();
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, setUser);
-    return () => unsub();
-  }, []);
+    if (!initializing && user) {
+      navigate(routes.dash);
+    }
+  }, [user, initializing, navigate]);
 
   const signUp = async () => {
     setBusy(true);

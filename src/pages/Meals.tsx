@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   Box,
   Heading,
@@ -11,6 +11,7 @@ import {
   useToast,
   Button,
   Flex,
+  Input,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
@@ -32,6 +33,9 @@ export default function Meals() {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [searchTerm, setSearchTerm] = useState(""); // name search
+  const [searchDate, setSearchDate] = useState(""); // YYYY-MM-DD
 
   const navigate = useNavigate();
   const toast = useToast();
@@ -103,6 +107,36 @@ export default function Meals() {
     }
   };
 
+  // helper to turn createdAt into "YYYY-MM-DD"
+  const createdAtToDateString = (createdAt: any): string => {
+    try {
+      const d =
+        createdAt && typeof createdAt.toDate === "function"
+          ? (createdAt.toDate() as Date)
+          : new Date(createdAt);
+      return d.toISOString().slice(0, 10);
+    } catch {
+      return "";
+    }
+  };
+
+  // filter by name + date
+  const filteredMeals = useMemo(() => {
+    return meals.filter((meal) => {
+      const matchesName = searchTerm
+        ? meal.title.toLowerCase().includes(searchTerm.toLowerCase())
+        : true;
+
+      const mealDateStr = meal.createdAt
+        ? createdAtToDateString(meal.createdAt)
+        : "";
+
+      const matchesDate = searchDate ? mealDateStr === searchDate : true;
+
+      return matchesName && matchesDate;
+    });
+  }, [meals, searchTerm, searchDate]);
+
   if (loading) {
     return (
       <AppLayout
@@ -131,7 +165,6 @@ export default function Meals() {
   if (error) {
     return (
       <AppLayout>
-        {" "}
         <Center minH="60vh">
           <Text color="red.400">{error}</Text>
         </Center>
@@ -153,7 +186,6 @@ export default function Meals() {
           </Button>
         }
       >
-        {" "}
         <Center minH="60vh">
           <VStack spacing={2}>
             <Heading size="md">No meals yet</Heading>
@@ -168,7 +200,7 @@ export default function Meals() {
     <AppLayout>
       <Box p={6}>
         <Flex flexDir="row" align="center" justify="space-between" mb={4}>
-          <Heading mb={4}>My Meals</Heading>{" "}
+          <Heading mb={4}>My Meals</Heading>
           <Button
             onClick={() => navigate(routes.mealNew)}
             className="rounded-xl px-5"
@@ -180,19 +212,48 @@ export default function Meals() {
           </Button>
         </Flex>
 
+        {/* Search bar row */}
+        <Flex
+          gap={4}
+          flexDir={{ base: "column", md: "row" }}
+          mb={4}
+          align={{ base: "stretch", md: "center" }}
+        >
+          <Input
+            placeholder="Search by name..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            maxW={{ base: "100%", md: "300px" }}
+          />
+          <Input
+            type="date"
+            value={searchDate}
+            onChange={(e) => setSearchDate(e.target.value)}
+            maxW={{ base: "100%", md: "200px" }}
+          />
+        </Flex>
+
         <Text mb={6} color="gray.500">
           Tap a meal card to view full nutrition details.
         </Text>
-        <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={5}>
-          {meals.map((meal) => (
-            <MealCard
-              key={meal.id}
-              meal={meal}
-              onOpen={handleCardClick}
-              onDelete={handleDeleteMeal}
-            />
-          ))}
-        </SimpleGrid>
+
+        {!filteredMeals.length ? (
+          <Text color="gray.400">
+            No meals match your current search. Try adjusting the name or date
+            filters.
+          </Text>
+        ) : (
+          <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={5}>
+            {filteredMeals.map((meal) => (
+              <MealCard
+                key={meal.id}
+                meal={meal}
+                onOpen={handleCardClick}
+                onDelete={handleDeleteMeal}
+              />
+            ))}
+          </SimpleGrid>
+        )}
       </Box>
     </AppLayout>
   );

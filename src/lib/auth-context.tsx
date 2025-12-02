@@ -36,5 +36,3 @@ export function useAuth(): AuthContextValue {
   }
   return ctx;
 }
-
-

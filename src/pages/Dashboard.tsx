@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   Box,
   Button,
+  Image,
   Flex,
   HStack,
   SimpleGrid,
@@ -145,6 +146,15 @@ export const Dashboard: React.FC = () => {
             recentMeals.map((meal) => (
               <Box key={meal.id}>
                 <Flex px={5} py={4} align="center" className="hover:bg-gray-50">
+                  <Image
+                    src={meal.imageData}
+                    alt={meal.title}
+                    w={{ base: "100%", md: "150px" }}
+                    h={{ base: "100px", md: "100px" }}
+                    objectFit="cover"
+                    borderRadius="xl"
+                    marginRight={5}
+                  />
                   <Box flex="1">
                     <Text fontWeight="medium" fontSize="sm">
                       {meal.title}

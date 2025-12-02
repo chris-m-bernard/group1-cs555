@@ -42,7 +42,7 @@ function App() {
               }
             />
             <Route
-              path={"/meals/:id"}
+              path={"/meals/:mealId"}
               element={
                 <ProtectedRoute>
                   <MealDetail />

@@ -1,6 +1,7 @@
 // src/components/ProtectedRoute.tsx
 import type { ReactElement } from "react";
 import { Navigate } from "react-router-dom";
+import { Center, Spinner } from "@chakra-ui/react";
 import { useAuth } from "../lib/auth-context";
 import { routes } from "../routes";
 
@@ -9,14 +10,23 @@ type ProtectedRouteProps = {
 };
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user } = useAuth(); // ⬅️ no loading here
+  const { user, initializing } = useAuth();
 
-  // If no user, redirect to auth
+  // ⏳ While Firebase is checking the session, don't redirect yet
+  if (initializing) {
+    return (
+      <Center minH="100vh">
+        <Spinner />
+      </Center>
+    );
+  }
+
+  // ❌ After init: no user → send to auth
   if (!user) {
     return <Navigate to={routes.auth} replace />;
   }
 
-  // Logged in → show page
+  // ✅ Logged in → allow access
   return children;
 };
 

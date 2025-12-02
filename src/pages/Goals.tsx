@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// src/pages/Goals.tsx
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Button,
@@ -14,17 +15,59 @@ import {
   useToast,
   Text,
   SimpleGrid,
+  Spinner,
 } from "@chakra-ui/react";
 import AppLayout from "../layouts/AppLayout";
+import { useAuth } from "../lib/auth-context";
+import {
+  getUserGoals,
+  saveUserGoals,
+  deleteUserGoals,
+  type UserGoals,
+  type GoalType,
+} from "../lib/goals";
 
 type GoalFormState = {
-  goalType: "maintain" | "lose" | "gain";
+  goalType: GoalType;
   dailyCalories: string;
   dailyProtein: string;
   dailyCarbs: string;
   dailyFat: string;
   notes: string;
 };
+
+// Presets for each overall goal
+const GOAL_PRESETS: Record<GoalType, Omit<GoalFormState, "goalType">> = {
+  maintain: {
+    dailyCalories: "2200",
+    dailyProtein: "140",
+    dailyCarbs: "220",
+    dailyFat: "70",
+    notes:
+      "I want to maintain weight while staying fueled for workouts and keeping energy stable throughout the day.",
+  },
+  lose: {
+    dailyCalories: "1900",
+    dailyProtein: "150",
+    dailyCarbs: "170",
+    dailyFat: "60",
+    notes:
+      "I want to lose weight gradually while keeping strength and energy for training.",
+  },
+  gain: {
+    dailyCalories: "2600",
+    dailyProtein: "160",
+    dailyCarbs: "260",
+    dailyFat: "80",
+    notes:
+      "I want to gain muscle and strength while staying relatively lean and energized.",
+  },
+};
+
+const makeDefaultForm = (goalType: GoalType): GoalFormState => ({
+  goalType,
+  ...GOAL_PRESETS[goalType],
+});
 
 const Goals: React.FC = () => {
   const cardBg = useColorModeValue("white", "gray.800");
@@ -33,17 +76,11 @@ const Goals: React.FC = () => {
   const subtleText = useColorModeValue("gray.500", "gray.400");
 
   const toast = useToast();
+  const { user } = useAuth();
 
-  // Mock initial values – swap with real user data later
-  const [form, setForm] = useState<GoalFormState>({
-    goalType: "maintain",
-    dailyCalories: "2200",
-    dailyProtein: "140",
-    dailyCarbs: "220",
-    dailyFat: "70",
-    notes:
-      "I want to maintain weight while staying fueled for workouts and keeping energy stable throughout the day.",
-  });
+  const [form, setForm] = useState<GoalFormState>(makeDefaultForm("maintain"));
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const updateField = <K extends keyof GoalFormState>(
     key: K,
@@ -52,20 +89,120 @@ const Goals: React.FC = () => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // When the user changes the overall goal, load that preset
+  const handleGoalTypeChange = (val: string) => {
+    const newType = val as GoalType;
+    const preset = GOAL_PRESETS[newType];
+
+    setForm({
+      goalType: newType,
+      dailyCalories: preset.dailyCalories,
+      dailyProtein: preset.dailyProtein,
+      dailyCarbs: preset.dailyCarbs,
+      dailyFat: preset.dailyFat,
+      notes: preset.notes,
+    });
+  };
+
+  // Load existing goals for this user
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
+    const load = async () => {
+      try {
+        const goals = await getUserGoals(user.uid);
+        if (goals) {
+          setForm({
+            goalType: goals.goalType,
+            dailyCalories: goals.dailyCalories.toString(),
+            dailyProtein: goals.dailyProtein.toString(),
+            dailyCarbs: goals.dailyCarbs.toString(),
+            dailyFat: goals.dailyFat.toString(),
+            notes: goals.notes ?? "",
+          });
+        } else {
+          // If no saved goals, start with maintain defaults
+          setForm(makeDefaultForm("maintain"));
+        }
+      } catch (err) {
+        console.error(err);
+        toast({
+          title: "Failed to load goals",
+          description: "There was an issue fetching your goals.",
+          status: "error",
+          duration: 3000,
+          isClosable: true,
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
+  }, [user, toast]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) return;
 
-    // TODO: send to backend / Firestore later
-    console.log("Saving goals:", form);
+    setSaving(true);
+    try {
+      const goals: UserGoals = {
+        goalType: form.goalType,
+        dailyCalories: Number(form.dailyCalories || 0),
+        dailyProtein: Number(form.dailyProtein || 0),
+        dailyCarbs: Number(form.dailyCarbs || 0),
+        dailyFat: Number(form.dailyFat || 0),
+        notes: form.notes,
+      };
 
+      await saveUserGoals(user.uid, goals);
+
+      toast({
+        title: "Goals updated",
+        description: "Your nutrition targets have been saved.",
+        status: "success",
+        duration: 2500,
+        isClosable: true,
+      });
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: "Failed to save goals",
+        description: "Please try again.",
+        status: "error",
+        duration: 2500,
+        isClosable: true,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetDefaults = () => {
+    // Reset based on the currently selected goalType
+    setForm(makeDefaultForm(form.goalType));
     toast({
-      title: "Goals updated",
-      description: "Your nutrition targets have been saved (mock for now).",
+      title: "Reset goals to default",
+      description: `Goals reset to the default values for "${form.goalType}"`,
       status: "success",
       duration: 2500,
       isClosable: true,
     });
   };
+
+  if (loading) {
+    return (
+      <AppLayout title="Adjust goals" subtitle="">
+        <Flex justify="center" align="center" minH="200px">
+          <Spinner />
+        </Flex>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout
@@ -86,12 +223,7 @@ const Goals: React.FC = () => {
         {/* Goal type */}
         <FormControl mb={6}>
           <FormLabel fontSize="sm">Overall goal</FormLabel>
-          <RadioGroup
-            value={form.goalType}
-            onChange={(val) =>
-              updateField("goalType", val as GoalFormState["goalType"])
-            }
-          >
+          <RadioGroup value={form.goalType} onChange={handleGoalTypeChange}>
             <Stack direction={{ base: "column", sm: "row" }} spacing={4}>
               <Radio value="maintain">Maintain weight</Radio>
               <Radio value="lose">Lose weight</Radio>
@@ -99,8 +231,7 @@ const Goals: React.FC = () => {
             </Stack>
           </RadioGroup>
           <Text fontSize="xs" color={subtleText} mt={1}>
-            This doesn’t change anything yet, but later it can drive AI
-            suggestions and automatic target tuning.
+            This can later drive AI suggestions and automatic target tuning.
           </Text>
         </FormControl>
 
@@ -162,15 +293,9 @@ const Goals: React.FC = () => {
               />
             </FormControl>
           </SimpleGrid>
-
-          <Text fontSize="xs" color={subtleText} mt={2}>
-            Tip: A common starting point is ~0.7–1.0g protein per lb of body
-            weight, with carbs and fats adjusted based on training and energy
-            levels.
-          </Text>
         </Box>
 
-        {/* Notes for AI / future use */}
+        {/* Notes */}
         <FormControl mb={6}>
           <FormLabel fontSize="sm">Notes</FormLabel>
           <Textarea
@@ -187,27 +312,26 @@ const Goals: React.FC = () => {
         </FormControl>
 
         {/* Actions */}
-        <Flex justify="flex-end" gap={3}>
+        <Flex justify="space-between" gap={3}>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() =>
-              setForm({
-                goalType: "maintain",
-                dailyCalories: "2200",
-                dailyProtein: "140",
-                dailyCarbs: "220",
-                dailyFat: "70",
-                notes:
-                  "I want to maintain weight while staying fueled for workouts and keeping energy stable throughout the day.",
-              })
-            }
+            onClick={handleResetDefaults}
+            isDisabled={saving}
           >
             Reset to defaults
           </Button>
-          <Button type="submit" colorScheme="teal" size="md">
-            Save goals
-          </Button>
+
+          <Flex gap={3}>
+            <Button
+              type="submit"
+              colorScheme="teal"
+              size="md"
+              isLoading={saving}
+            >
+              Save goals
+            </Button>
+          </Flex>
         </Flex>
       </Box>
     </AppLayout>
