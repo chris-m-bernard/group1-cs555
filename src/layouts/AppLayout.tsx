@@ -26,6 +26,7 @@ const navItems = [
   { label: "Overview", to: "/dashboard" }, // or "/" if that's your dashboard
   { label: "My Meals", to: "/meals" },
   { label: "Analytics", to: "/analytics" },
+  { label: "Goals", to: "/goals" },
   { label: "Settings", to: "/settings" },
 ];
 
@@ -85,7 +86,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           </Box>
           <Box>
             <Text fontWeight="bold" fontSize="lg">
-              MacroVision
+              CS555 Food Tracker
             </Text>
             <Text fontSize="xs" color="gray.300">
               AI Food Tracker
@@ -178,11 +179,5 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
     </Flex>
   );
 };
-
-export const UploadMealButton: React.FC = () => (
-  <Button className="rounded-xl px-5" colorScheme="teal" size="md">
-    Upload new meal
-  </Button>
-);
 
 export default AppLayout;

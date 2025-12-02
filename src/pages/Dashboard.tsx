@@ -10,9 +10,9 @@ import {
   Text,
   useColorModeValue,
 } from "@chakra-ui/react";
-
-import AppLayout, { UploadMealButton } from "../layouts/AppLayout";
-
+import { useNavigate } from "react-router-dom";
+import AppLayout from "../layouts/AppLayout";
+import { routes } from "../routes";
 type Meal = {
   id: number;
   name: string;
@@ -64,6 +64,7 @@ const mockRecommendations: Recommendation[] = [
 ];
 
 export const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [date, setDate] = useState("");
 
@@ -83,48 +84,17 @@ export const Dashboard: React.FC = () => {
     <AppLayout
       title="Welcome back, User"
       subtitle="Upload your meals and let the AI handle the nutrition breakdown."
-      action={<UploadMealButton />}
+      action={
+        <Button
+          onClick={() => navigate(routes.mealNew)}
+          className="rounded-xl px-5"
+          colorScheme="teal"
+          size="md"
+        >
+          Upload new meal
+        </Button>
+      }
     >
-      {/* Filters */}
-      <Box bg={cardBg} rounded="2xl" p={5} boxShadow="sm" className="mb-8">
-        <Flex gap={6} className="flex-col md:flex-row">
-          {/* Search */}
-          <Box flex="1">
-            <Text mb={1} fontSize="sm" fontWeight="medium">
-              Search meals
-            </Text>
-            <InputGroup>
-              <Input
-                placeholder="e.g., chicken salad, pasta..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                bg={useColorModeValue("gray.50", "gray.800")}
-              />
-            </InputGroup>
-          </Box>
-
-          {/* Date filter */}
-          <Box flex="1">
-            <Text mb={1} fontSize="sm" fontWeight="medium">
-              Filter by date
-            </Text>
-            <InputGroup>
-              <Input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                bg={useColorModeValue("gray.50", "gray.800")}
-              />
-            </InputGroup>
-            {date && (
-              <Button mt={1} fontSize="xs" onClick={() => setDate("")}>
-                Clear date
-              </Button>
-            )}
-          </Box>
-        </Flex>
-      </Box>
-
       {/* Recent meals */}
       <Box mb={8}>
         <HStack justify="space-between" mb={3}>
@@ -133,7 +103,9 @@ export const Dashboard: React.FC = () => {
               Recent meals
             </Text>
           </HStack>
-          <Button size="sm">View all</Button>
+          <Button size="sm" onClick={() => navigate(routes.meals)}>
+            View all
+          </Button>
         </HStack>
 
         <Box
