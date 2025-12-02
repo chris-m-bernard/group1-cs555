@@ -1,18 +1,16 @@
-// src/pages/MyMeals.tsx
 import { useEffect, useState } from "react";
 import {
   Box,
   Heading,
   Text,
-  Image,
   SimpleGrid,
-  Badge,
   VStack,
   HStack,
   Spinner,
   Center,
-  useColorModeValue,
-  Skeleton,
+  useToast,
+  Button,
+  Flex,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import { auth, db } from "../lib/firebase";
@@ -23,17 +21,12 @@ import {
   orderBy,
   type DocumentData,
 } from "firebase/firestore";
+import AppLayout from "../layouts/AppLayout";
+import { deleteMeal } from "../lib/meal";
 
-type Meal = {
-  id: string;
-  title: string;
-  imageUrl?: string;
-  calories?: number;
-  protein?: number;
-  carbs?: number;
-  fat?: number;
-  createdAt?: any;
-};
+import type { Meal } from "../lib/meal";
+import MealCard from "../components/MealCard";
+import { routes } from "../routes";
 
 export default function Meals() {
   const [meals, setMeals] = useState<Meal[]>([]);
@@ -41,13 +34,10 @@ export default function Meals() {
   const [error, setError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-
-  const cardBg = useColorModeValue("white", "gray.800");
-  const cardBorder = useColorModeValue("gray.200", "gray.700");
+  const toast = useToast();
 
   useEffect(() => {
     const user = auth.currentUser;
-
     if (!user) {
       setError("You must be logged in to view meals.");
       setLoading(false);
@@ -65,7 +55,7 @@ export default function Meals() {
           return {
             id: doc.id,
             title: data.title ?? "Untitled meal",
-            imageUrl: data.imageUrl,
+            imageData: data.imageData,
             calories: data.calories,
             protein: data.protein,
             carbs: data.carbs,
@@ -91,118 +81,119 @@ export default function Meals() {
     navigate(`/meals/${mealId}`);
   };
 
+  const handleDeleteMeal = async (mealId: string) => {
+    try {
+      await deleteMeal(mealId);
+      setMeals((prev) => prev.filter((m) => m.id !== mealId));
+      toast({
+        title: "Meal deleted",
+        status: "success",
+        duration: 2500,
+        isClosable: true,
+      });
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error deleting meal",
+        description: err.message || "Something went wrong.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    }
+  };
+
   if (loading) {
     return (
-      <Center minH="60vh">
-        <VStack spacing={4}>
-          <Spinner />
-          <Text>Loading your meals...</Text>
-        </VStack>
-      </Center>
+      <AppLayout
+        subtitle="Upload your meals and let the AI handle the nutrition breakdown."
+        action={
+          <Button
+            onClick={() => navigate(routes.mealNew)}
+            className="rounded-xl px-5"
+            colorScheme="teal"
+            size="md"
+          >
+            Upload new meal
+          </Button>
+        }
+      >
+        <Center minH="60vh">
+          <VStack spacing={4}>
+            <Spinner />
+            <Text>Loading your meals...</Text>
+          </VStack>
+        </Center>
+      </AppLayout>
     );
   }
 
   if (error) {
     return (
-      <Center minH="60vh">
-        <Text color="red.400">{error}</Text>
-      </Center>
+      <AppLayout>
+        {" "}
+        <Center minH="60vh">
+          <Text color="red.400">{error}</Text>
+        </Center>
+      </AppLayout>
     );
   }
 
   if (!meals.length) {
     return (
-      <Center minH="60vh">
-        <VStack spacing={2}>
-          <Heading size="md">No meals yet</Heading>
-          <Text color="gray.400">
-            Start by adding your first meal from the logging page.
-          </Text>
-        </VStack>
-      </Center>
+      <AppLayout
+        action={
+          <Button
+            onClick={() => navigate(routes.mealNew)}
+            className="rounded-xl px-5"
+            colorScheme="teal"
+            size="md"
+          >
+            Upload new meal
+          </Button>
+        }
+      >
+        {" "}
+        <Center minH="60vh">
+          <VStack spacing={2}>
+            <Heading size="md">No meals yet</Heading>
+            <Text color="gray.400">Start by adding your first meal.</Text>
+          </VStack>
+        </Center>
+      </AppLayout>
     );
   }
 
   return (
-    <Box p={6}>
-      <Heading mb={4}>My Meals</Heading>
-      <Text mb={6} color="gray.500">
-        Tap a meal card to view full nutrition details.
-      </Text>
-
-      <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={5}>
-        {meals.map((meal) => (
-          <Box
-            key={meal.id}
-            bg={cardBg}
-            borderWidth="1px"
-            borderColor={cardBorder}
-            borderRadius="xl"
-            overflow="hidden"
-            boxShadow="md"
-            _hover={{ boxShadow: "xl", transform: "translateY(-2px)" }}
-            transition="all 0.15s ease-out"
-            cursor="pointer"
-            onClick={() => handleCardClick(meal.id)}
+    <AppLayout>
+      <Box p={6}>
+        <Flex flexDir="row" align="center" justify="space-between" mb={4}>
+          <Heading mb={4}>My Meals</Heading>{" "}
+          <Button
+            onClick={() => navigate(routes.mealNew)}
+            className="rounded-xl px-5"
+            colorScheme="teal"
+            size="md"
+            right={0}
           >
-            {meal.imageUrl ? (
-              <Image
-                src={meal.imageUrl}
-                alt={meal.title}
-                objectFit="cover"
-                w="100%"
-                h="180px"
-              />
-            ) : (
-              <Skeleton h="180px" />
-            )}
+            Upload new meal
+          </Button>
+        </Flex>
 
-            <VStack align="start" spacing={2} p={4}>
-              <Heading size="md" noOfLines={1}>
-                {meal.title}
-              </Heading>
-
-              <HStack spacing={2} flexWrap="wrap">
-                {meal.calories != null && (
-                  <Badge borderRadius="full" px={2} py={1}>
-                    {Math.round(meal.calories)} kcal
-                  </Badge>
-                )}
-                {meal.protein != null && (
-                  <Badge borderRadius="full" px={2} py={1}>
-                    {meal.protein}g protein
-                  </Badge>
-                )}
-                {meal.carbs != null && (
-                  <Badge borderRadius="full" px={2} py={1}>
-                    {meal.carbs}g carbs
-                  </Badge>
-                )}
-                {meal.fat != null && (
-                  <Badge borderRadius="full" px={2} py={1}>
-                    {meal.fat}g fat
-                  </Badge>
-                )}
-              </HStack>
-
-              {meal.createdAt && (
-                <Text fontSize="xs" color="gray.400">
-                  Logged{" "}
-                  {(() => {
-                    try {
-                      const date =
-                        meal.createdAt.toDate?.() ?? new Date(meal.createdAt);
-                      return date.toLocaleString();
-                    } catch {
-                      return "";
-                    }
-                  })()}
-                </Text>
-              )}
-            </VStack>
-          </Box>
-        ))}
-      </SimpleGrid>
-    </Box>
+        <Text mb={6} color="gray.500">
+          Tap a meal card to view full nutrition details.
+        </Text>
+        <SimpleGrid columns={{ base: 1, sm: 2, md: 3 }} spacing={5}>
+          {meals.map((meal) => (
+            <MealCard
+              key={meal.id}
+              meal={meal}
+              onOpen={handleCardClick}
+              onDelete={handleDeleteMeal}
+            />
+          ))}
+        </SimpleGrid>
+      </Box>
+    </AppLayout>
   );
 }

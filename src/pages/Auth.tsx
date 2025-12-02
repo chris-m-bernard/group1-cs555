@@ -27,6 +27,8 @@ import {
 } from "firebase/auth";
 import { routes } from "../routes.ts";
 import { Link } from "react-router-dom";
+import { ensureUserDoc } from "../lib/userData";
+
 import { useNavigate } from "react-router-dom";
 
 export default function Auth(): ReactElement {
@@ -66,8 +68,13 @@ export default function Auth(): ReactElement {
         rememberMe ? browserLocalPersistence : browserSessionPersistence
       );
 
-      await signInWithEmailAndPassword(auth, email, pw);
+      // Log the user in
+      const cred = await signInWithEmailAndPassword(auth, email, pw);
 
+      // Ensure Firestore user document exists
+      await ensureUserDoc();
+
+      // Navigate now that everything is set up
       navigate(routes.dash);
     } catch (e: any) {
       setError(e?.message ?? "Sign in failed");

@@ -11,6 +11,8 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import AppLayout from "../layouts/AppLayout";
+import { useNavigate } from "react-router-dom";
+import { addMealForCurrentUser } from "../lib/meal";
 
 const UploadMeal: React.FC = () => {
   const cardBg = useColorModeValue("white", "gray.800");
@@ -24,6 +26,7 @@ const UploadMeal: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toast = useToast();
+  const navigate = useNavigate();
 
   // Handle image preview URL lifecycle
   useEffect(() => {
@@ -42,49 +45,64 @@ const UploadMeal: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
-
-    // basic check – you can add size/type checks here
     setFile(selected);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!title.trim() || !file) {
+    if (!file) {
       toast({
-        title: "Missing info",
-        description: "Please add a title and an image for your meal.",
+        title: "No image selected",
+        description: "Please choose a meal photo to upload.",
         status: "warning",
-        duration: 2500,
+        duration: 3000,
+        isClosable: true,
+      });
+      return;
+    }
+
+    if (!title.trim()) {
+      toast({
+        title: "Missing title",
+        description: "Please enter a title for your meal.",
+        status: "warning",
+        duration: 3000,
         isClosable: true,
       });
       return;
     }
 
     setIsSubmitting(true);
+    try {
+      await addMealForCurrentUser(file, title.trim());
 
-    // TODO: hook to your backend / Firebase storage + Firestore
-    console.log("Uploading meal:", {
-      title,
-      fileName: file.name,
-      file,
-    });
-
-    setTimeout(() => {
-      setIsSubmitting(false);
       toast({
         title: "Meal uploaded",
-        description:
-          "This is a mock upload for now. Wire it up to your backend next.",
+        description: "Your meal has been added to your log.",
         status: "success",
         duration: 2500,
         isClosable: true,
       });
 
-      // reset form
+      // optional: clear local state before navigating
       setTitle("");
       setFile(null);
-    }, 800);
+
+      navigate("/meals");
+    } catch (err: any) {
+      console.error(err);
+      toast({
+        title: "Error uploading meal",
+        description:
+          err?.message || "Something went wrong while saving your meal.",
+        status: "error",
+        duration: 3000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
