@@ -24,7 +24,8 @@ import { doc, getDoc, Timestamp } from "firebase/firestore";
 import AppLayout from "../layouts/AppLayout";
 import { auth, db } from "../lib/firebase";
 import { deleteMeal, updateMeal, type Meal } from "../lib/meal";
-
+import { routes } from "../routes";
+import { ArrowBackIcon } from "@chakra-ui/icons";
 // Extend your Meal type locally to include AI fields
 type MealWithAI = Meal & {
   aiSource?: string;
@@ -56,6 +57,20 @@ export default function MealDetail() {
     description: "",
     date: "YYYY-MM-DD",
   });
+
+  // Helper to format a Date as local YYYY-MM-DD (not UTC ISO)
+  const formatLocalDate = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  // Helper to parse YYYY-MM-DD into a local Date
+  const parseLocalDateFromInput = (value: string) => {
+    const [y, m, d] = value.split("-").map(Number);
+    return new Date(y, (m ?? 1) - 1, d ?? 1); // local midnight
+  };
 
   useEffect(() => {
     const fetchMeal = async () => {
@@ -100,6 +115,12 @@ export default function MealDetail() {
 
         setMeal(loadedMeal);
 
+        const createdAtDate =
+          loadedMeal.createdAt &&
+          typeof (loadedMeal.createdAt as any).toDate === "function"
+            ? (loadedMeal.createdAt as any).toDate()
+            : new Date();
+
         // initialize edit form from meal
         setForm({
           title: loadedMeal.title ?? "",
@@ -112,14 +133,7 @@ export default function MealDetail() {
           carbs: loadedMeal.carbs !== undefined ? String(loadedMeal.carbs) : "",
           fat: loadedMeal.fat !== undefined ? String(loadedMeal.fat) : "",
           description: loadedMeal.description ?? "",
-          date:
-            loadedMeal.createdAt &&
-            typeof (loadedMeal.createdAt as any).toDate === "function"
-              ? (loadedMeal.createdAt as any)
-                  .toDate()
-                  .toISOString()
-                  .slice(0, 10)
-              : new Date().toISOString().slice(0, 10),
+          date: formatLocalDate(createdAtDate),
         });
 
         setLoading(false);
@@ -173,7 +187,9 @@ export default function MealDetail() {
     if (!mealId) return;
 
     try {
-      const newDate = Timestamp.fromDate(new Date(form.date));
+      const newCreatedAt = Timestamp.fromDate(
+        parseLocalDateFromInput(form.date)
+      );
 
       await updateMeal(mealId, {
         title: form.title,
@@ -182,7 +198,7 @@ export default function MealDetail() {
         carbs: form.carbs ? Number(form.carbs) : undefined,
         fat: form.fat ? Number(form.fat) : undefined,
         description: form.description,
-        createdAt: newDate,
+        createdAt: newCreatedAt,
       });
 
       // update local state so UI reflects changes
@@ -196,7 +212,7 @@ export default function MealDetail() {
               carbs: form.carbs ? Number(form.carbs) : undefined,
               fat: form.fat ? Number(form.fat) : undefined,
               description: form.description,
-              createdAt: newDate,
+              createdAt: newCreatedAt,
             }
           : prev
       );
@@ -250,6 +266,16 @@ export default function MealDetail() {
     <AppLayout
       title={meal.title}
       subtitle="Full nutrition breakdown for this meal."
+      action={
+        <Button
+          onClick={() => navigate(routes.meals)}
+          className="rounded-xl px-5"
+          colorScheme="teal"
+          size="md"
+        >
+          <ArrowBackIcon marginRight={1} /> Back
+        </Button>
+      }
     >
       <Box p={6} maxW="800px" mx="auto">
         <VStack align="stretch" spacing={6}>
