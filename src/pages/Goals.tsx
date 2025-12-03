@@ -207,7 +207,7 @@ const Goals: React.FC = () => {
   return (
     <AppLayout
       title="Adjust goals"
-      subtitle="Tune your calorie and macro targets so MacroVision can give you smarter recommendations."
+      subtitle="Tune your calorie and macro targets so NutrifyAI can give you smarter recommendations."
     >
       <Box
         as="form"

@@ -108,13 +108,19 @@ export default function Meals() {
   };
 
   // helper to turn createdAt into "YYYY-MM-DD"
+  // helper to turn createdAt into local "YYYY-MM-DD"
   const createdAtToDateString = (createdAt: any): string => {
     try {
       const d =
         createdAt && typeof createdAt.toDate === "function"
           ? (createdAt.toDate() as Date)
           : new Date(createdAt);
-      return d.toISOString().slice(0, 10);
+
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, "0"); // 0-based month
+      const day = String(d.getDate()).padStart(2, "0");
+
+      return `${year}-${month}-${day}`; // local date string
     } catch {
       return "";
     }
@@ -225,12 +231,24 @@ export default function Meals() {
             onChange={(e) => setSearchTerm(e.target.value)}
             maxW={{ base: "100%", md: "300px" }}
           />
+
           <Input
             type="date"
             value={searchDate}
             onChange={(e) => setSearchDate(e.target.value)}
             maxW={{ base: "100%", md: "200px" }}
           />
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearchTerm("");
+              setSearchDate("");
+            }}
+          >
+            Clear filters
+          </Button>
         </Flex>
 
         <Text mb={6} color="gray.500">

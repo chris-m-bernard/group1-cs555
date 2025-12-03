@@ -204,7 +204,7 @@ const UploadMeal: React.FC = () => {
   return (
     <AppLayout
       title="Upload new meal"
-      subtitle="Add a photo and a title so MacroVision + Gemini can analyze it and log the nutrition for you."
+      subtitle="Add a photo and a title so NutrifyAI can analyze it and log the nutrition for you."
     >
       <Flex
         minH="calc(100vh - 120px)"

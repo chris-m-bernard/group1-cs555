@@ -163,7 +163,7 @@ export default function Auth(): ReactElement {
               </Box>
               <Box>
                 <Text fontWeight="bold" fontSize="lg">
-                  MacroVision
+                  NutrifyAI
                 </Text>
                 <Text fontSize="xs" color="gray.300">
                   AI Food Tracker
@@ -181,7 +181,7 @@ export default function Auth(): ReactElement {
           </Box>
 
           <Text fontSize="xs" color="gray.500" mt={8}>
-            © {new Date().getFullYear()} MacroVision
+            © {new Date().getFullYear()} NutrifyAI
           </Text>
         </Box>
 
