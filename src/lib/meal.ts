@@ -12,49 +12,86 @@ import {
   getDocs,
   serverTimestamp,
 } from "firebase/firestore";
-import { fileToBase64 } from "./fileToBase64";
+
+// --- AI-related types ---
+
+export type AIDetection = {
+  bbox: number[];
+  food: string;
+  confidence: number;
+  all_predictions: [string, number][];
+  crop_type: string;
+};
+
+export type AIPerItem = {
+  food: string;
+  calories: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+};
 
 export type MealInput = {
   title: string;
-  file: File;
+  imageData: string; // base64 or data URL
   calories?: number;
   protein?: number;
   carbs?: number;
   fat?: number;
   description?: string;
+  aiSource?: string;
+  aiDetections?: any[];
+  aiPerItem?: any[];
 };
 
 export type Meal = {
   id: string;
   title: string;
-  imageData?: string; // base64 image stored in Firestore
+  imageData?: string;
   calories?: number;
   protein?: number;
   carbs?: number;
   fat?: number;
   description?: string;
-  createdAt?: any; // Firestore Timestamp or Date; keep flexible for now
+  createdAt?: any;
+  aiSource?: string;
+  aiDetections?: any[];
+  aiPerItem?: any[];
 };
 
 /**
  * Create a meal for the current user.
- * Defaults all macro values to 0 and description to empty string.
+ * Accepts already-processed data (image URL + macros + AI info).
+ * Defaults missing macro values to 0 and description to empty string.
  */
-export async function addMealForCurrentUser(file: File, title: string) {
+export async function addMealForCurrentUser(input: MealInput) {
   const user = auth.currentUser;
   if (!user) throw new Error("User must be logged in to upload meals");
 
-  // Convert to base64 instead of uploading to Storage
-  const imageData = await fileToBase64(file);
+  const {
+    title,
+    imageData,
+    calories = 0,
+    protein = 0,
+    carbs = 0,
+    fat = 0,
+    description = "",
+    aiSource = "manual",
+    aiDetections = [],
+    aiPerItem = [],
+  } = input;
 
   const docRef = await addDoc(collection(db, "users", user.uid, "meals"), {
     title,
     imageData,
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-    description: "",
+    calories,
+    protein,
+    carbs,
+    fat,
+    description,
+    aiSource,
+    aiDetections,
+    aiPerItem,
     createdAt: serverTimestamp(),
   });
 
@@ -77,7 +114,6 @@ export const deleteMeal = async (mealId: string) => {
 /**
  * Update a meal for the current user by id.
  */
-// src/lib/meal.ts
 export const updateMeal = async (
   mealId: string,
   updates: Partial<
@@ -89,7 +125,10 @@ export const updateMeal = async (
       | "carbs"
       | "fat"
       | "description"
-      | "createdAt" // ⬅️ add this
+      | "createdAt"
+      | "aiSource"
+      | "aiDetections"
+      | "aiPerItem"
     >
   >
 ) => {
@@ -104,7 +143,6 @@ export const updateMeal = async (
 
 /**
  * Get a single meal for the current user by id.
- * (Optional helper if you want to use it in MealDetail instead of inlining getDoc.)
  */
 export const getMealForCurrentUser = async (
   mealId: string
@@ -130,12 +168,15 @@ export const getMealForCurrentUser = async (
     fat: Number(data.fat ?? 0),
     description: data.description ?? "",
     createdAt: data.createdAt,
+    aiSource: data.aiSource ?? undefined,
+    aiDetections: data.aiDetections ?? [],
+    aiPerItem: data.aiPerItem ?? [],
   };
 };
 
 /**
  * List ALL meals for the current user.
- * Macros are defaulted to 0 if missing.
+ * Macros default to 0 if missing.
  */
 export const listMealsForCurrentUser = async (): Promise<Meal[]> => {
   const user = auth.currentUser;
@@ -160,6 +201,9 @@ export const listMealsForCurrentUser = async (): Promise<Meal[]> => {
       fat: Number(data.fat ?? 0),
       description: data.description ?? "",
       createdAt: data.createdAt,
+      aiSource: data.aiSource ?? undefined,
+      aiDetections: data.aiDetections ?? [],
+      aiPerItem: data.aiPerItem ?? [],
     });
   });
 
@@ -184,8 +228,6 @@ export const getMealsForCurrentUserLastNDays = async (
 
   const mealsRef = collection(db, "users", user.uid, "meals");
 
-  // If some older meals don't have createdAt yet, they simply won't show up here,
-  // which is fine for "recent analytics" use.
   const q = query(
     mealsRef,
     where("createdAt", ">=", Timestamp.fromDate(start))
@@ -206,6 +248,9 @@ export const getMealsForCurrentUserLastNDays = async (
       fat: Number(data.fat ?? 0),
       description: data.description ?? "",
       createdAt: data.createdAt,
+      aiSource: data.aiSource ?? undefined,
+      aiDetections: data.aiDetections ?? [],
+      aiPerItem: data.aiPerItem ?? [],
     });
   });
 

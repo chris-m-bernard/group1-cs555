@@ -38,7 +38,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
-
+  const user = auth.currentUser;
   const bgMain = useColorModeValue("gray.100", "gray.950");
   const sidebarBg = useColorModeValue("#020617", "gray.900");
   const sidebarActive = useColorModeValue("whiteAlpha.200", "whiteAlpha.200");
@@ -102,10 +102,10 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           <Avatar name="Username" size="sm" bg="teal.500" />
           <VStack spacing={0} align="flex-start">
             <Text fontWeight="semibold" fontSize="sm">
-              User
+              {user?.displayName}
             </Text>
             <Text fontSize="xs" color="gray.400">
-              User@example.com
+              {user?.email}
             </Text>
           </VStack>
         </HStack>

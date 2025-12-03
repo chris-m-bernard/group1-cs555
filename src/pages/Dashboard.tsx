@@ -8,6 +8,7 @@ import {
   SimpleGrid,
   Text,
   useColorModeValue,
+  background,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../layouts/AppLayout";
@@ -144,14 +145,14 @@ export const Dashboard: React.FC = () => {
             </Flex>
           ) : (
             recentMeals.map((meal) => (
-              <Box key={meal.id}>
+              <Box key={meal.id} onClick={() => navigate(`/meals/${meal.id}`)}>
                 <Flex px={5} py={4} align="center" className="hover:bg-gray-50">
                   <Image
                     src={meal.imageData}
                     alt={meal.title}
                     w={{ base: "100%", md: "150px" }}
                     h={{ base: "100px", md: "100px" }}
-                    objectFit="cover"
+                    objectFit="scale-down"
                     borderRadius="xl"
                     marginRight={5}
                   />

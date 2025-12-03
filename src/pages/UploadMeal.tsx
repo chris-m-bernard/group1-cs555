@@ -16,6 +16,34 @@ import { FiUploadCloud, FiCamera } from "react-icons/fi";
 import AppLayout from "../layouts/AppLayout";
 import { useNavigate } from "react-router-dom";
 import { addMealForCurrentUser } from "../lib/meal";
+import { fileToBase64 } from "../lib/fileToBase64";
+
+const AI_BASE_URL =
+  import.meta.env.VITE_AI_SERVICE_URL ?? "http://127.0.0.1:8000";
+
+type AIResponse = {
+  detections: {
+    bbox: number[];
+    food: string;
+    confidence: number;
+    all_predictions: [string, number][];
+    crop_type: string;
+  }[];
+  macros: {
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  };
+  per_item: {
+    food: string;
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  }[];
+  source: string;
+};
 
 const UploadMeal: React.FC = () => {
   const cardBg = useColorModeValue("white", "gray.800");
@@ -35,7 +63,7 @@ const UploadMeal: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Handle image preview URL lifecycle
+  // Preview
   useEffect(() => {
     if (!file) {
       setPreviewUrl(null);
@@ -43,10 +71,7 @@ const UploadMeal: React.FC = () => {
     }
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
-
-    return () => {
-      URL.revokeObjectURL(url);
-    };
+    return () => URL.revokeObjectURL(url);
   }, [file]);
 
   const handleSelectedFile = (selected: File | null) => {
@@ -65,25 +90,40 @@ const UploadMeal: React.FC = () => {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0] ?? null;
-    handleSelectedFile(selected);
+    handleSelectedFile(e.target.files?.[0] ?? null);
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragOver(false);
-    const selected = e.dataTransfer.files?.[0] ?? null;
-    handleSelectedFile(selected);
+    handleSelectedFile(e.dataTransfer.files?.[0] ?? null);
   };
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragOver(true);
-  };
+  const callAIService = async (
+    imageBase64: string,
+    title: string
+  ): Promise<AIResponse | null> => {
+    try {
+      const res = await fetch(`${AI_BASE_URL}/analyze-meal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          imageBase64,
+          title,
+        }),
+      });
 
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDragOver(false);
+      if (!res.ok) {
+        console.error("AI service error:", res.status, res.statusText);
+        return null;
+      }
+
+      const data = (await res.json()) as AIResponse;
+      return data;
+    } catch (err) {
+      console.error("Error calling AI service:", err);
+      return null;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -113,11 +153,31 @@ const UploadMeal: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      await addMealForCurrentUser(file, title.trim());
+      // 1) Convert file to base64 string to store in Firestore
+      const imageData = await fileToBase64(file);
+
+      // 2) Call AI backend (using base64)
+      const ai = await callAIService(imageData, title.trim());
+
+      // 3) Save everything directly in Firestore
+      await addMealForCurrentUser({
+        title: title.trim(),
+        imageData,
+        calories: ai?.macros?.calories ?? 0,
+        protein: ai?.macros?.protein_g ?? 0,
+        carbs: ai?.macros?.carbs_g ?? 0,
+        fat: ai?.macros?.fat_g ?? 0,
+        description: "",
+        aiSource: ai?.source ?? "manual",
+        aiDetections: ai?.detections ?? [],
+        aiPerItem: ai?.per_item ?? [],
+      });
 
       toast({
         title: "Meal uploaded",
-        description: "Your meal has been added to your log.",
+        description: ai
+          ? "Your meal has been added with AI-estimated nutrition."
+          : "Your meal has been added. Nutrition can be edited manually.",
         status: "success",
         duration: 2500,
         isClosable: true,
@@ -125,7 +185,6 @@ const UploadMeal: React.FC = () => {
 
       setTitle("");
       setFile(null);
-
       navigate("/meals");
     } catch (err: any) {
       console.error(err);
@@ -145,9 +204,8 @@ const UploadMeal: React.FC = () => {
   return (
     <AppLayout
       title="Upload new meal"
-      subtitle="Add a photo and a title so MacroVision can analyze it and log the nutrition for you."
+      subtitle="Add a photo and a title so MacroVision + Gemini can analyze it and log the nutrition for you."
     >
-      {/* Center the card on the page */}
       <Flex
         minH="calc(100vh - 120px)"
         justify="center"
@@ -167,7 +225,7 @@ const UploadMeal: React.FC = () => {
           w="100%"
           mx="auto"
         >
-          {/* Meal title */}
+          {/* Title */}
           <FormControl mb={6}>
             <FormLabel fontSize="sm" fontWeight="medium">
               Meal title
@@ -180,7 +238,7 @@ const UploadMeal: React.FC = () => {
             />
           </FormControl>
 
-          {/* Image upload area */}
+          {/* Image upload */}
           <FormControl mb={6}>
             <FormLabel fontSize="sm" fontWeight="medium">
               Meal photo
@@ -191,7 +249,7 @@ const UploadMeal: React.FC = () => {
               gap={5}
               align={{ base: "stretch", md: "flex-start" }}
             >
-              {/* Left: drag & drop / buttons */}
+              {/* Left: drag & drop */}
               <VStack flex="1" spacing={3} align="stretch">
                 <Box
                   bg={softBg}
@@ -204,8 +262,11 @@ const UploadMeal: React.FC = () => {
                   transition="all 0.15s ease-out"
                   cursor="pointer"
                   onClick={() => fileInputRef.current?.click()}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(true);
+                  }}
+                  onDragLeave={() => setIsDragOver(false)}
                   onDrop={handleDrop}
                 >
                   <VStack spacing={2}>
@@ -250,7 +311,6 @@ const UploadMeal: React.FC = () => {
                   display="none"
                   onChange={handleFileChange}
                 />
-                {/* Camera-focused input for mobile */}
                 <Input
                   ref={cameraInputRef}
                   type="file"

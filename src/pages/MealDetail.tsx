@@ -18,15 +18,28 @@ import {
   FormLabel,
   Input,
   Textarea,
+  Divider,
 } from "@chakra-ui/react";
 import { doc, getDoc, Timestamp } from "firebase/firestore";
 import AppLayout from "../layouts/AppLayout";
 import { auth, db } from "../lib/firebase";
 import { deleteMeal, updateMeal, type Meal } from "../lib/meal";
 
+// Extend your Meal type locally to include AI fields
+type MealWithAI = Meal & {
+  aiSource?: string;
+  aiPerItem?: {
+    food: string;
+    calories: number;
+    protein_g: number;
+    carbs_g: number;
+    fat_g: number;
+  }[];
+};
+
 export default function MealDetail() {
   const { mealId } = useParams<{ mealId: string }>();
-  const [meal, setMeal] = useState<Meal | null>(null);
+  const [meal, setMeal] = useState<MealWithAI | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -70,7 +83,8 @@ export default function MealDetail() {
         }
 
         const data = snap.data();
-        const loadedMeal: Meal = {
+
+        const loadedMeal: MealWithAI = {
           id: snap.id,
           title: data.title ?? "Untitled meal",
           imageData: data.imageData,
@@ -80,6 +94,8 @@ export default function MealDetail() {
           fat: data.fat,
           description: data.description,
           createdAt: data.createdAt,
+          aiSource: data.aiSource,
+          aiPerItem: Array.isArray(data.aiPerItem) ? data.aiPerItem : [],
         };
 
         setMeal(loadedMeal);
@@ -98,8 +114,11 @@ export default function MealDetail() {
           description: loadedMeal.description ?? "",
           date:
             loadedMeal.createdAt &&
-            typeof loadedMeal.createdAt.toDate === "function"
-              ? loadedMeal.createdAt.toDate().toISOString().slice(0, 10) // <-- KEEP previous date
+            typeof (loadedMeal.createdAt as any).toDate === "function"
+              ? (loadedMeal.createdAt as any)
+                  .toDate()
+                  .toISOString()
+                  .slice(0, 10)
               : new Date().toISOString().slice(0, 10),
         });
 
@@ -154,6 +173,8 @@ export default function MealDetail() {
     if (!mealId) return;
 
     try {
+      const newDate = Timestamp.fromDate(new Date(form.date));
+
       await updateMeal(mealId, {
         title: form.title,
         calories: form.calories ? Number(form.calories) : undefined,
@@ -161,7 +182,7 @@ export default function MealDetail() {
         carbs: form.carbs ? Number(form.carbs) : undefined,
         fat: form.fat ? Number(form.fat) : undefined,
         description: form.description,
-        createdAt: Timestamp.fromDate(new Date(form.date)),
+        createdAt: newDate,
       });
 
       // update local state so UI reflects changes
@@ -175,6 +196,7 @@ export default function MealDetail() {
               carbs: form.carbs ? Number(form.carbs) : undefined,
               fat: form.fat ? Number(form.fat) : undefined,
               description: form.description,
+              createdAt: newDate,
             }
           : prev
       );
@@ -222,6 +244,8 @@ export default function MealDetail() {
     );
   }
 
+  const hasAIItems = meal.aiPerItem && meal.aiPerItem.length > 0;
+
   return (
     <AppLayout
       title={meal.title}
@@ -235,7 +259,7 @@ export default function MealDetail() {
               alt={meal.title}
               w="100%"
               maxH="320px"
-              objectFit="cover"
+              objectFit="scale-down"
               borderRadius="xl"
             />
           ) : (
@@ -266,6 +290,7 @@ export default function MealDetail() {
 
           {!editing && (
             <>
+              {/* Total macros */}
               <HStack spacing={3} flexWrap="wrap">
                 {meal.calories != null && (
                   <Badge borderRadius="full" px={3} py={1}>
@@ -289,10 +314,56 @@ export default function MealDetail() {
                 )}
               </HStack>
 
+              {/* AI source badge */}
+              {meal.aiSource && (
+                <HStack mt={2}>
+                  <Badge colorScheme="purple" borderRadius="full" px={3} py={1}>
+                    NutrifyAI
+                  </Badge>
+                </HStack>
+              )}
+
               {meal.description && (
-                <Text mt={2} whiteSpace="pre-wrap">
+                <Text mt={3} whiteSpace="pre-wrap">
                   {meal.description}
                 </Text>
+              )}
+
+              {/* AI per-item breakdown */}
+              {hasAIItems && (
+                <Box mt={4}>
+                  <Divider mb={3} />
+                  <Heading size="md" mb={2}>
+                    Item breakdown
+                  </Heading>
+                  <VStack align="stretch" spacing={3}>
+                    {meal.aiPerItem!.map((item, idx) => (
+                      <Box
+                        key={`${item.food}-${idx}`}
+                        p={3}
+                        borderWidth="1px"
+                        borderRadius="lg"
+                      >
+                        <HStack justify="space-between" align="center">
+                          <Text fontWeight="semibold">{item.food}</Text>
+                          <Text fontSize="sm" color="gray.500">
+                            {Math.round(item.calories)} kcal
+                          </Text>
+                        </HStack>
+                        <HStack
+                          spacing={4}
+                          mt={1}
+                          fontSize="sm"
+                          color="gray.500"
+                        >
+                          <Text>{item.protein_g}g protein</Text>
+                          <Text>{item.carbs_g}g carbs</Text>
+                          <Text>{item.fat_g}g fat</Text>
+                        </HStack>
+                      </Box>
+                    ))}
+                  </VStack>
+                </Box>
               )}
             </>
           )}
@@ -361,7 +432,8 @@ export default function MealDetail() {
 
               <FormControl>
                 <FormLabel>Date</FormLabel>
-                <input
+                <Input
+                  as="input"
                   name="date"
                   type="date"
                   value={form.date}
@@ -384,7 +456,7 @@ export default function MealDetail() {
                 try {
                   const date =
                     (meal.createdAt as any).toDate?.() ??
-                    new Date(meal.createdAt);
+                    new Date(meal.createdAt as any);
                   return date.toLocaleString();
                 } catch {
                   return "";

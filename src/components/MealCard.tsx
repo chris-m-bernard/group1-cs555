@@ -51,7 +51,7 @@ export default function MealCard({ meal, onOpen, onDelete }: MealCardProps) {
           alt={meal.title}
           w="100%"
           h="180px"
-          objectFit="cover"
+          objectFit="scale-down"
         />
       ) : (
         <Skeleton h="180px" />
