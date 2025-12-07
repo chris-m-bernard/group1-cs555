@@ -7,4 +7,5 @@ export const routes = {
   goals: "/goals",
   settings: "/settings",
   mealNew: "/meals/new",
+  savedRecipes: "/savedRecipes",
 } as const;

@@ -13,6 +13,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./lib/auth-context";
 import { routes } from "./routes";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SavedRecipesPage from "./pages/SavedRecipes";
 
 function App() {
   return (
@@ -78,6 +79,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <UploadMeal />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path={routes.savedRecipes}
+              element={
+                <ProtectedRoute>
+                  <SavedRecipesPage />
                 </ProtectedRoute>
               }
             />

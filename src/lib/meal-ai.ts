@@ -42,3 +42,65 @@ export async function analyzeMealImage(
 
   return (await res.json()) as AnalyzeMealResponse;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Recipe recommendations                                             */
+/* ------------------------------------------------------------------ */
+
+// What the backend returns for each recipe
+export type AIRecipe = {
+  title: string;
+  description: string;
+  ingredients: string[];
+  steps: string[];
+  estimated_calories?: number;
+  tags?: string[];
+};
+
+type RecommendMealsResponse = {
+  recipes: AIRecipe[];
+};
+
+// Shape of the meals we accept from the app when generating recs
+export type PastMealForAI = {
+  title: string;
+  calories?: number | null;
+  protein?: number | null;
+  carbs?: number | null;
+  fat?: number | null;
+  tags?: string[]; // optional, for later if you add them
+};
+
+/**
+ * Call the FastAPI /recommend-meals endpoint to generate
+ * 3 new recipes based on the user's past meals.
+ */
+export async function generateMealRecommendationsFromMeals(
+  meals: PastMealForAI[]
+): Promise<AIRecipe[]> {
+  const payload = {
+    meals: meals.map((m) => ({
+      title: m.title,
+      calories: m.calories ?? null,
+      protein_g: m.protein ?? null,
+      carbs_g: m.carbs ?? null,
+      fat_g: m.fat ?? null,
+      tags: m.tags ?? [],
+    })),
+  };
+
+  const res = await fetch(`${AI_BASE_URL}/recommend-meals`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `AI recommendation service error: ${res.status} ${res.statusText}`
+    );
+  }
+
+  const data = (await res.json()) as RecommendMealsResponse;
+  return data.recipes;
+}

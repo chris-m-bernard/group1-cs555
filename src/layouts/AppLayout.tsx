@@ -27,6 +27,7 @@ const navItems = [
   { label: "My Meals", to: "/meals" },
   { label: "Analytics", to: "/analytics" },
   { label: "Goals", to: "/goals" },
+  { label: "Saved Recipies", to: "/savedRecipes" },
   { label: "Settings", to: "/settings" },
 ];
 

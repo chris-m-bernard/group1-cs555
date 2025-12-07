@@ -1,3 +1,4 @@
+// src/pages/Dashboard.tsx
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -5,10 +6,8 @@ import {
   Image,
   Flex,
   HStack,
-  SimpleGrid,
   Text,
   useColorModeValue,
-  background,
 } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
 import AppLayout from "../layouts/AppLayout";
@@ -23,37 +22,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import type { Meal } from "../lib/meal";
-
-type Recommendation = {
-  id: number;
-  name: string;
-  description: string;
-  imageUrl: string;
-};
-
-const mockRecommendations: Recommendation[] = [
-  {
-    id: 1,
-    name: "Mediterranean Quinoa Bowl",
-    description: "Click to view recipe and nutrition.",
-    imageUrl:
-      "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg",
-  },
-  {
-    id: 2,
-    name: "Berry Yogurt Parfait",
-    description: "High protein, low sugar breakfast.",
-    imageUrl:
-      "https://images.pexels.com/photos/3731477/pexels-photo-3731477.jpeg",
-  },
-  {
-    id: 3,
-    name: "Tofu Stir-Fry",
-    description: "Balanced plant-based dinner.",
-    imageUrl:
-      "https://images.pexels.com/photos/1437267/pexels-photo-1437267.jpeg",
-  },
-];
+import RecipeRecommendationsSection from "../components/RecipeRecommendationsSection";
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -168,7 +137,10 @@ export const Dashboard: React.FC = () => {
                     size="sm"
                     variant="outline"
                     rounded="full"
-                    onClick={() => navigate(`/meals/${meal.id}`)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/meals/${meal.id}`);
+                    }}
                   >
                     View details
                   </Button>
@@ -179,42 +151,8 @@ export const Dashboard: React.FC = () => {
         </Box>
       </Box>
 
-      {/* Recommendations */}
-      <Box mb={4}>
-        <Text fontSize="lg" fontWeight="semibold" mb={3}>
-          Recommended for you
-        </Text>
-
-        <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }}>
-          {mockRecommendations.map((rec) => (
-            <Box
-              key={rec.id}
-              bg={cardBg}
-              margin={2}
-              rounded="2xl"
-              overflow="hidden"
-              boxShadow="sm"
-              className="cursor-pointer hover:shadow-md transition-shadow"
-            >
-              <Box className="h-32 w-full overflow-hidden">
-                <img
-                  src={rec.imageUrl}
-                  alt={rec.name}
-                  className="h-full w-full object-cover"
-                />
-              </Box>
-              <Box p={4}>
-                <Text fontWeight="semibold" fontSize="sm" mb={1}>
-                  {rec.name}
-                </Text>
-                <Text fontSize="xs" color="gray.500">
-                  {rec.description}
-                </Text>
-              </Box>
-            </Box>
-          ))}
-        </SimpleGrid>
-      </Box>
+      {/* Recipe recommendations (AI + Firestore) */}
+      <RecipeRecommendationsSection recentMeals={recentMeals} />
     </AppLayout>
   );
 };

@@ -4,6 +4,7 @@ import json
 import base64
 from io import BytesIO
 from typing import Optional
+import traceback
 
 import requests
 from fastapi import FastAPI, HTTPException
@@ -25,6 +26,11 @@ if not api_key:
 genai.configure(api_key=api_key)
 gemini_model = genai.GenerativeModel("gemini-2.5-flash")
 
+recommend_model = genai.GenerativeModel(
+    "gemini-2.5-flash",
+    generation_config={"response_mime_type": "application/json"},
+)
+
 app = FastAPI()
 
 origins = [
@@ -43,11 +49,12 @@ app.add_middleware(
 
 # ---------- Pydantic models ----------
 
+
 class AnalyzeMealRequest(BaseModel):
     # Any of these is fine; at least one must be provided
-    imageUrl: Optional[str] = None            # http(s) URL
-    imageBase64: Optional[str] = None         # may be raw base64 OR data URL
-    imageData: Optional[str] = Field(         # also accept data URL here
+    imageUrl: Optional[str] = None  # http(s) URL
+    imageBase64: Optional[str] = None  # may be raw base64 OR data URL
+    imageData: Optional[str] = Field(  # also accept data URL here
         default=None,
         description="Data URL style base64 image, e.g. data:image/jpeg;base64,...",
     )
@@ -68,7 +75,34 @@ class AnalyzeMealResponse(BaseModel):
     source: str
 
 
+class PastMeal(BaseModel):
+    title: str
+    calories: Optional[float] = None
+    protein_g: Optional[float] = None
+    carbs_g: Optional[float] = None
+    fat_g: Optional[float] = None
+    tags: Optional[list[str]] = None  # ["high protein", "vegetarian"]
+
+
+class RecommendMealsRequest(BaseModel):
+    meals: list[PastMeal]
+
+
+class RecipeRecommendation(BaseModel):
+    title: str
+    description: str
+    ingredients: list[str]
+    steps: list[str]
+    estimated_calories: Optional[int] = None
+    tags: Optional[list[str]] = None
+
+
+class RecommendMealsResponse(BaseModel):
+    recipes: list[RecipeRecommendation]
+
+
 # ---------- Helpers ----------
+
 
 def download_image_bytes(url: str) -> bytes:
     resp = requests.get(url)
@@ -91,7 +125,7 @@ def _decode_base64_maybe_data_url(b64_or_data_url: str) -> tuple[bytes, Optional
         header, _, b64_part = s.partition(",")
         # header like "data:image/avif;base64"
         if ";base64" in header:
-            mime = header[5:header.index(";base64")]  # between 'data:' and ';base64'
+            mime = header[5 : header.index(";base64")]  # between 'data:' and ';base64'
         s = b64_part
 
     try:
@@ -163,7 +197,48 @@ def get_image_bytes_and_mime(req: AnalyzeMealRequest) -> tuple[bytes, str]:
     return raw_bytes, mime
 
 
-# ---------- Route ----------
+def _extract_json_from_gemini(text: str) -> dict:
+    """
+    Try very hard to get a JSON object out of Gemini's response text.
+    1) Direct json.loads
+    2) Extract first ```json ... ``` block
+    3) Extract largest {...} block that contains "recipes"
+    Raises ValueError if it can't parse.
+    """
+    # 1) Direct attempt
+    try:
+        return json.loads(text)
+    except Exception:
+        pass
+
+    # 2) Look for ```json ... ``` fenced code block
+    start = text.find("```json")
+    if start != -1:
+        end = text.find("```", start + len("```json"))
+        if end != -1:
+            inner = text[start + len("```json") : end].strip()
+            try:
+                return json.loads(inner)
+            except Exception:
+                pass
+
+    # 3) Look for the largest {...} that contains "recipes"
+    first_brace = text.find("{")
+    last_brace = text.rfind("}")
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        candidate = text[first_brace : last_brace + 1]
+        if '"recipes"' in candidate:
+            try:
+                return json.loads(candidate)
+            except Exception:
+                pass
+
+    # If we reach here, parsing failed
+    raise ValueError("Could not extract JSON from Gemini response")
+
+
+# ---------- Routes ----------
+
 
 @app.post("/analyze-meal", response_model=AnalyzeMealResponse)
 def analyze_meal(req: AnalyzeMealRequest):
@@ -246,4 +321,180 @@ Your task:
         raise
     except Exception as e:
         print("Error analyzing meal:", e)
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="Failed to analyze meal")
+
+
+@app.post("/recommend-meals", response_model=RecommendMealsResponse)
+def recommend_meals(req: RecommendMealsRequest):
+    """
+    Generate 3 new recipe recommendations based on the user's past meals.
+    """
+
+    # Build a human-readable summary of past meals for the prompt
+    if req.meals:
+        meals_text_lines = []
+        for m in req.meals:
+            macros = []
+            if m.calories is not None:
+                macros.append(f"cal: {m.calories}")
+            if m.protein_g is not None:
+                macros.append(f"P: {m.protein_g}g")
+            if m.carbs_g is not None:
+                macros.append(f"C: {m.carbs_g}g")
+            if m.fat_g is not None:
+                macros.append(f"F: {m.fat_g}g")
+
+            macros_str = ", ".join(macros) if macros else "macros: unknown"
+            tags_str = f"tags: {m.tags}" if m.tags else "tags: []"
+            meals_text_lines.append(f"- {m.title} ({macros_str}; {tags_str})")
+
+        meals_text = "\n".join(meals_text_lines)
+    else:
+        meals_text = "No past meals provided."
+
+    prompt = f"""
+You are a nutrition-aware recipe assistant helping a college student.
+
+The user has eaten meals like:
+{meals_text}
+
+Based on their past meals, suggest 3 NEW recipes that:
+- Are realistic for a college student (simple, affordable ingredients)
+- Are reasonably balanced (protein, carbs, and some healthy fats)
+- Do NOT exactly repeat any previous meals, but keep a similar general style and preferences
+- Include estimated calories for each full recipe
+
+Return ONLY a valid JSON object in this exact structure. Do not include triple backticks or any markdown:
+
+{{
+  "recipes": [
+    {{
+      "title": "string",
+      "description": "short overview of the meal",
+      "ingredients": ["ingredient 1", "ingredient 2", "..."],
+      "steps": ["step 1", "step 2", "..."],
+      "estimated_calories": 600,
+      "tags": ["high protein", "easy", "dinner"]
+    }},
+    {{
+      "title": "string",
+      "description": "short overview",
+      "ingredients": ["..."],
+      "steps": ["..."],
+      "estimated_calories": 500,
+      "tags": ["..."]
+    }},
+    {{
+      "title": "string",
+      "description": "short overview",
+      "ingredients": ["..."],
+      "steps": ["..."],
+      "estimated_calories": 700,
+      "tags": ["..."]
+    }}
+  ]
+}}
+"""
+
+    try:
+        # Use the JSON-mode model
+        response = recommend_model.generate_content(prompt)
+        text = response.text.strip()
+    except Exception as e:
+        print("Error calling Gemini for recommendations:", e)
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate recommendations from AI model",
+        )
+
+    # Safety: strip accidental ``` fences if they appear directly
+    if text.startswith("```"):
+        t = text.strip()
+        if t.startswith("```json"):
+            t = t[len("```json") :].strip()
+        elif t.startswith("```"):
+            t = t[3:].strip()
+        if t.endswith("```"):
+            t = t[:-3].strip()
+        text = t
+
+    # -------- Robust JSON parsing with helper + fallback --------
+    try:
+        data = _extract_json_from_gemini(text)
+    except Exception as e:
+        print("JSON parse error for recommendations:", e)
+        print("Raw response from Gemini (truncated to 1000 chars):")
+        print(text[:1000])
+        traceback.print_exc()
+
+        # LAST RESORT FALLBACK: static recipes so the UI still works
+        fallback_recipes = [
+            {
+                "title": "Quick Veggie Pasta",
+                "description": "A simple one-pan pasta with veggies and olive oil.",
+                "ingredients": [
+                    "80g dry pasta",
+                    "1 cup mixed frozen vegetables",
+                    "1 tbsp olive oil",
+                    "1 clove garlic, minced",
+                    "Salt and pepper to taste",
+                ],
+                "steps": [
+                    "Cook pasta according to package instructions.",
+                    "In a pan, sauté garlic in olive oil, then add frozen veggies and cook until heated through.",
+                    "Toss cooked pasta with the veggies, season with salt and pepper, and serve.",
+                ],
+                "estimated_calories": 600,
+                "tags": ["easy", "college-friendly", "vegetarian"],
+            },
+            {
+                "title": "Chicken & Rice Bowl",
+                "description": "Simple chicken, rice, and veggies bowl for a balanced meal.",
+                "ingredients": [
+                    "1 cup cooked rice",
+                    "120g cooked chicken breast, sliced",
+                    "1/2 cup steamed broccoli",
+                    "1 tbsp soy sauce",
+                ],
+                "steps": [
+                    "Add rice to a bowl.",
+                    "Top with cooked chicken and steamed broccoli.",
+                    "Drizzle soy sauce over the top and serve.",
+                ],
+                "estimated_calories": 650,
+                "tags": ["high protein", "dinner", "balanced"],
+            },
+            {
+                "title": "Yogurt Parfait",
+                "description": "Quick breakfast with yogurt, fruit, and granola.",
+                "ingredients": [
+                    "1 cup Greek yogurt",
+                    "1/2 cup mixed berries",
+                    "1/4 cup granola",
+                ],
+                "steps": [
+                    "Add yogurt to a bowl or cup.",
+                    "Top with berries and granola.",
+                    "Serve immediately.",
+                ],
+                "estimated_calories": 400,
+                "tags": ["breakfast", "quick", "high protein"],
+            },
+        ]
+
+        typed_fallback = [RecipeRecommendation(**r) for r in fallback_recipes]
+        return RecommendMealsResponse(recipes=typed_fallback)
+
+    # Normal path if parsing succeeded
+    recipes = data.get("recipes")
+    if not isinstance(recipes, list) or len(recipes) == 0:
+        raise HTTPException(status_code=500, detail="AI did not return any recipes")
+
+    # Force exactly 3 recipes max
+    recipes = recipes[:3]
+
+    typed_recipes = [RecipeRecommendation(**r) for r in recipes]
+
+    return RecommendMealsResponse(recipes=typed_recipes)
