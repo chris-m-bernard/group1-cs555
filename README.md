@@ -14,6 +14,64 @@ Currently a React application with Firebase authentication, built with TypeScrip
 
 This app showcases a responsive Chakra UI layout with protected routes powered by Firebase Authentication. It’s a clean baseline for teams to iterate quickly on real-world features.
 
+# Setup
+
+Here is a quick step-by-step process to connect the model to test our application.
+
+## Set Environment variable
+
+In the `FoodAIModel` folder, create an environment file named `.env` and put this line in there:
+
+```env
+GEMINI_API_KEY=AIzaSyCzYgYl0buc99tyLGF8CUnQihK0Hq850AE
+```
+
+## 2. Create & Activate a Python Virtual Environment
+
+Go into the `FoodAIModel` directory:
+
+```bash
+# go into the FoodAIModel Directory
+cd .\FoodAIModel```
+
+Create the virtual environment:
+
+```bash
+# Create venv
+python -m venv venv
+```
+
+Activate the virtual environment:
+
+```bash
+# Activate venv (Windows)
+venv\Scripts\ctivate
+```
+
+```bash
+# Activate venv (Mac/Linux)
+source venv/bin/activate
+```
+
+## 3. Install Dependencies
+
+Install the required packages:
+
+```bash
+# Install required packages
+pip install -r requirements.txt
+```
+
+## 4. Start the FastAPI Server
+
+Run the development server:
+
+```bash
+# Run development server
+uvicorn main:app --reload --port 8000
+```
+
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
