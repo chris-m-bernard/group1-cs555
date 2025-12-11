@@ -32,7 +32,9 @@ Go into the `FoodAIModel` directory:
 
 ```bash
 # go into the FoodAIModel Directory
-cd .\FoodAIModel```
+cd .\FoodAIModel
+```
+
 
 Create the virtual environment:
 
