@@ -14,11 +14,42 @@ Currently a React application with Firebase authentication, built with TypeScrip
 
 This app showcases a responsive Chakra UI layout with protected routes powered by Firebase Authentication. It’s a clean baseline for teams to iterate quickly on real-world features.
 
-# Setup
+# App Setup Instructions
+
+## Install Dependencies
+
+Install all dependencies for our app:
+
+```bash
+npm install
+```
+
+## Create/Set Environment File
+In the the application's directory, create an environment file named `.env.local` and put this code in there to connect it with our database:
+
+```env
+VITE_FIREBASE_API_KEY=AIzaSyB7n2LuyHF0xqgLfTTUEtxIJjMtNV7I7Jg
+VITE_FIREBASE_AUTH_DOMAIN=diet-analyzer---diet-decoders.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=diet-analyzer---diet-decoders
+VITE_FIREBASE_STORAGE_BUCKET=diet-analyzer---diet-decoders.firebasestorage.app
+VITE_FIREBASE_MESSAGING_SENDER_ID=347043735845
+VITE_FIREBASE_APP_ID=1:347043735845:web:a8b2ae2da3b1cb3113d2cc
+
+```
+
+## Run the App
+
+To run our app itself, run:
+
+```bash
+npm run dev
+```
+
+## Connect the FastAPI Server
 
 Here is a quick step-by-step process to connect the model to test our application.
 
-## Set Environment variable
+### 1. Create/Set Environment variable
 
 In the `FoodAIModel` folder, create an environment file named `.env` and put this line in there:
 
@@ -26,7 +57,7 @@ In the `FoodAIModel` folder, create an environment file named `.env` and put thi
 GEMINI_API_KEY=AIzaSyCzYgYl0buc99tyLGF8CUnQihK0Hq850AE
 ```
 
-## 2. Create & Activate a Python Virtual Environment
+### 2. Create & Activate a Python Virtual Environment
 
 Go into the `FoodAIModel` directory:
 
@@ -55,7 +86,7 @@ venv\Scripts\ctivate
 source venv/bin/activate
 ```
 
-## 3. Install Dependencies
+### 3. Install Dependencies
 
 Install the required packages:
 
@@ -64,7 +95,7 @@ Install the required packages:
 pip install -r requirements.txt
 ```
 
-## 4. Start the FastAPI Server
+### 4. Start the FastAPI Server
 
 Run the development server:
 
