@@ -101,7 +101,7 @@ Run the development server:
 
 ```bash
 # Run development server
-uvicorn main:app --reload --port 8000
+uvicorn app:app --reload --port 8000
 ```
 
 
