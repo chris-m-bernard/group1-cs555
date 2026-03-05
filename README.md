@@ -1,4 +1,4 @@
-# Group 1 CS-555 Project
+# Nutrify AI: Agile Methods for Software Development Project
 
 A React application with Firebase authentication, built with TypeScript and Vite.
 
