@@ -25,15 +25,16 @@ npm install
 ```
 
 ## Create/Set Environment File
-In the the application's directory, create an environment file named `.env.local` and put this code in there to connect it with our database:
+
+In the the application's directory, create an environment file named `.env.local` and insert the corresponding firebase information to connect to your database:
 
 ```env
-VITE_FIREBASE_API_KEY=AIzaSyB7n2LuyHF0xqgLfTTUEtxIJjMtNV7I7Jg
-VITE_FIREBASE_AUTH_DOMAIN=diet-analyzer---diet-decoders.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=diet-analyzer---diet-decoders
-VITE_FIREBASE_STORAGE_BUCKET=diet-analyzer---diet-decoders.firebasestorage.app
-VITE_FIREBASE_MESSAGING_SENDER_ID=347043735845
-VITE_FIREBASE_APP_ID=1:347043735845:web:a8b2ae2da3b1cb3113d2cc
+VITE_FIREBASE_API_KEY=________________________
+VITE_FIREBASE_AUTH_DOMAIN=________________________
+VITE_FIREBASE_PROJECT_ID=________________________
+VITE_FIREBASE_STORAGE_BUCKET=________________________
+VITE_FIREBASE_MESSAGING_SENDER_ID=________________________
+VITE_FIREBASE_APP_ID=________________________
 
 ```
 
@@ -51,10 +52,10 @@ Here is a quick step-by-step process to connect the model to test our applicatio
 
 ### 1. Create/Set Environment variable
 
-In the `FoodAIModel` folder, create an environment file named `.env` and put this line in there:
+In the `FoodAIModel` folder, create an environment file named `.env` and insert your gemini API key:
 
 ```env
-GEMINI_API_KEY=AIzaSyCzYgYl0buc99tyLGF8CUnQihK0Hq850AE
+GEMINI_API_KEY=________________________
 ```
 
 ### 2. Create & Activate a Python Virtual Environment
@@ -65,7 +66,6 @@ Go into the `FoodAIModel` directory:
 # go into the FoodAIModel Directory
 cd .\FoodAIModel
 ```
-
 
 Create the virtual environment:
 
@@ -104,7 +104,6 @@ Run the development server:
 uvicorn app:app --reload --port 8000
 ```
 
-
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -124,9 +123,9 @@ If you are developing a production application, we recommend updating the config
 
 ```js
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(["dist"]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     extends: [
       // Other configs...
 
@@ -141,40 +140,40 @@ export default defineConfig([
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
         tsconfigRootDir: import.meta.dirname,
       },
       // other options...
     },
   },
-])
+]);
 ```
 
 You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
 ```js
 // eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+import reactX from "eslint-plugin-react-x";
+import reactDom from "eslint-plugin-react-dom";
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(["dist"]),
   {
-    files: ['**/*.{ts,tsx}'],
+    files: ["**/*.{ts,tsx}"],
     extends: [
       // Other configs...
       // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
+      reactX.configs["recommended-typescript"],
       // Enable lint rules for React DOM
       reactDom.configs.recommended,
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
         tsconfigRootDir: import.meta.dirname,
       },
       // other options..
     },
   },
-])
+]);
 ```
