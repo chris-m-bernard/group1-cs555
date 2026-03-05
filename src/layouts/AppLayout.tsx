@@ -46,8 +46,8 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
 
   const handleLogout = async () => {
     try {
-      await signOut(auth); // 🔐 actually log out of Firebase
-      navigate(routes.auth); // 🔁 send them to the auth page
+      await signOut(auth); // actually log out of Firebase
+      navigate(routes.auth); // send them to the auth page
     } catch (err) {
       console.error("Error signing out:", err);
     }
