@@ -1,6 +1,10 @@
 # Group 1 CS-555 Project
 
-Currently a React application with Firebase authentication, built with TypeScript and Vite.
+A React application with Firebase authentication, built with TypeScript and Vite.
+
+This app allows users to take pictures of their plate of food to recieve an estimation of the calories and macro-nutrient profile for said meal. The output is then saved to the users profile so they can refer back to their previous meals, where they then recieve feedback based on the goal they have set in their profile. After users log their first meal, they begin to recieve meal recommendations based on both what they've entered into the app and their dietary goals.
+
+We completed this project using Scrum, a widely used Agile methodology. Progress was divided into sprints, with backlogs of tasks representing correlating with each of our three sprints. To ensure we made steady progression, we met at least once per sprint to assess the state of the application and discuss how we'd like to change our approach.
 
 ## Features
 
